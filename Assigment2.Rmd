@@ -1,0 +1,126 @@
+---
+title: "Assigment1"
+author: "Ernesto"
+date: "10/24/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## First un zip and load the data
+
+
+
+
+```{r}
+if (!file.exists('activity.csv')) {
+  unzip(zipfile = "activity.zip")
+}
+
+activity <- read.csv(file="activity.csv", header=TRUE)
+```
+
+# What is mean total number of steps taken per day? 
+
+Calculate and plot histogram
+
+```{r}
+# Calculate the total steps taken per day
+daysteps <- aggregate(steps ~ date, activity, FUN=sum)
+
+# Make a histogram 
+hist(daysteps$steps,
+     main = "Steps per Day",
+     xlab = "Steps")
+```
+
+the mean and median total number of steps taken per day
+```{r}
+meansteps <- mean(daysteps$steps, na.rm = TRUE)
+mediansteps <- median(daysteps$steps, na.rm = TRUE)
+print(meansteps)
+print(mediansteps)
+
+```
+##What is the average daily activity pattern?
+
+plot the time series
+```{r}
+# Calculate the mean for interval
+intersteps <- aggregate(steps ~ interval, activity, FUN=mean)
+plot.ts(intersteps$steps)
+
+```
+
+Max interval 
+
+```{r}
+maxint <- intersteps[which.max(intersteps$steps),]
+print(maxint)
+```
+
+##Imputing Missing Values
+```{r}
+# Calculate and report the total number of missing values
+missingVals <- is.na(activity$steps)
+print(sum(missingVals))
+```
+imputing NA with the average value
+```{r}
+new_activity <- transform(activity,
+                          steps = ifelse(is.na(activity$steps),
+                                        intersteps$steps[match(activity$interval, 
+                                                               intersteps$interval)],
+                                             activity$steps))
+head(new_activity)
+```
+Make histogram.
+
+```{r}
+# Make a histogram of the total number of steps taken each day
+new_daystep <- aggregate(steps ~ date, new_activity, FUN=sum)
+hist(new_daystep$steps,
+     main = "Imputed Number of Steps Per Day",
+     xlab = "Steps")
+```
+Reporting the mean and median
+```{r}
+new_mean <- mean(new_daystep$steps, na.rm = TRUE)
+new_median <- median(new_daystep$steps, na.rm = TRUE)
+print(diffmean <- new_mean - meansteps)
+print(diffmed <- new_median - mediansteps)
+print(difftotal <- sum(new_daystep$steps) - sum(daysteps$steps))
+```
+##Are there differences in activity patterns between weekdays and weekends?
+
+Make a factor variable
+```{r}
+# Create a new factor variable with two levels - "weekend" and "weekday"
+DayType <- function(date) {
+  day <- weekdays(date,abbreviate = FALSE)
+  if (day %in% c('lunes', 'martes', 'miércoles', 'jueves', 'viernes'))
+      return ("weekeday")
+  else if (day %in% c('sábado', 'domingo'))
+      return ("weekend")
+  else
+       print(weekdays(date))
+}
+print(missingdates <- sum(is.na(activity$date)))
+new_activity$date <- as.Date(new_activity$date)
+new_activity$day <- sapply(new_activity$date, FUN = DayType)
+```
+plotting time series
+
+```{r}
+library(ggplot2)
+weekstapes <- aggregate(steps ~ interval + day, new_activity, mean)
+ggplot(data = weekstapes, aes(x = interval, y = steps)) + 
+  geom_line() +
+  facet_grid(day ~ .) +
+  ggtitle("Average Activity Pattern") +
+  xlab("5-minute Interval") +
+  ylab("Average of Steps") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
